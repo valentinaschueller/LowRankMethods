@@ -1,6 +1,9 @@
 export exercise1, exercise2, exercise3, exercise4, exercise5, exercise6, exercise7
 export truncated_Tsum
 export compare_L
+export exercise9
+export rotation_compare_Ls
+export full_rank_solver
 
 include("transport.jl")
 include("rotation.jl")
@@ -249,7 +252,7 @@ function exercise6()
     @assert norm(truc_L - W(1, W0, Dx, Dy)) < 1e-10
 end
 
-function exercise7()
+function exercise9()
     m = 128
     n = 128
     Lx = 6
@@ -258,7 +261,116 @@ function exercise7()
     hy = 2 * Ly / n
     Dx = stencil_matrix(hx, m)
     Dy = stencil_matrix(hy, n)
-    T = 0.5 * Float64(π)
+    x = LinRange(-Lx, Lx - hx, m)
+    y = LinRange(-Ly, Ly - hy, n)
+    X = diagm(x)
+    Y = diagm(y)
+
+    a = 1.0
+    b = 0.5
+    x0 = 0.0
+    y0 = 0.0
+    W0 = zeros(m, n)
+    exp_x_term = zeros(m, n)
+    exp_y_term = zeros(m, n)
+    @. exp_x_term = exp(-(x - x0)^2 / (2 * a^2))
+    @. exp_y_term = exp(-(y - y0)^2 / (2 * b^2))
+    @. W0 = exp_x_term * exp_y_term'
+
+    Lexact = zeros(m, n)
+    @. Lexact = (y * (-1 / a^2) * (x - x0)' + x * (-1 / b^2) * (y - y0)') * (exp_x_term * exp_y_term')
+    Lapprox = applyL(W0, Dx, Dy, X, Y)
+    diff = Lexact - Lapprox
+    heatmap(diff)
+    display(current())
+    @assert sqrt(hx * hy) * norm(diff) < 2e-2
+end
+
+function rotation_compare_Ls()
+    m = 128
+    n = 128
+    Lx = 6
+    Ly = 6
+    hx = 2 * Lx / m
+    hy = 2 * Ly / n
+    Dx = stencil_matrix(hx, m)
+    Dy = stencil_matrix(hy, n)
+    x = LinRange(-Lx, Lx - hx, m)
+    y = LinRange(-Ly, Ly - hy, n)
+    X = diagm(x)
+    Y = diagm(y)
+
+    a = 1.0
+    b = 0.5
+    x0 = 0.0
+    y0 = 0.0
+    W0 = zeros(m, n)
+    exp_x_term = zeros(m, n)
+    exp_y_term = zeros(m, n)
+    @. exp_x_term = exp(-(x - x0)^2 / (2 * a^2))
+    @. exp_y_term = exp(-(y - y0)^2 / (2 * b^2))
+    @. W0 = exp_x_term * exp_y_term'
+
+    W0L = LLRSVD(W0, 1e-10)
+
+    Ldense = applyL(W0, Dx, Dy, X, Y)
+    Llowrank = applyL(W0L, Dx, Dy, X, Y, 1e-10)
+    diff = Ldense - todense(Llowrank)
+    @assert sqrt(hx * hy) * norm(diff) < 1e-10
+
+    W1 = W(1, W0, Dx, Dy, X, Y)[end]
+    W1L = todense(W(1, W0L, Dx, Dy, X, Y, 0.0)[end])
+    @assert norm(W1 - W1L) < 1e-10
+
+    W3 = W(3, W0, Dx, Dy, X, Y)[end]
+    W3L = todense(W(3, W0L, Dx, Dy, X, Y, 0.0)[end])
+    @assert norm(W3 - W3L) < 1e-10
+end
+
+function full_rank_solver()
+    m = 128
+    n = 128
+    Lx = 6
+    Ly = 6
+    hx = 2 * Lx / m
+    hy = 2 * Ly / n
+    Dx = stencil_matrix(hx, m)
+    Dy = stencil_matrix(hy, n)
+    T = 2 * Float64(π)
+    x = LinRange(-Lx, Lx - hx, m)
+    y = LinRange(-Ly, Ly - hy, n)
+    X = diagm(x)
+    Y = diagm(y)
+    p = 3
+
+    a = 1.0
+    b = 0.5
+    x0 = 0.0
+    y0 = 0.0
+    W0 = zeros(m, n)
+    @. W0 = exp(-(x - x0)^2 / (2 * a^2)) * exp(-(y - y0)^2 / (2 * b^2))'
+
+    Δt = 0.1 * min(hx, hy)
+    nt = ceil(T / Δt)
+    Δt = T / nt
+    Wn, ts = time_loop(W0, Dx, Dy, X, Y, Δt, T, p)
+
+    heatmap(W0; title="t = 0")
+    display(current())
+    heatmap(Wn; title="t = $(round(ts[end], sigdigits=3))")
+    display(current())
+end
+
+function exercise7()
+    m = 64
+    n = 64
+    Lx = 6
+    Ly = 6
+    hx = 2 * Lx / m
+    hy = 2 * Ly / n
+    Dx = stencil_matrix(hx, m)
+    Dy = stencil_matrix(hy, n)
+    T = 2 * Float64(π)
     x = LinRange(-Lx, Lx - hx, m)
     y = LinRange(-Ly, Ly - hy, n)
     X = diagm(x)
@@ -274,12 +386,15 @@ function exercise7()
     @. W0 = exp(-(x - x0)^2 / (2 * a^2)) * exp(-(y - y0)^2 / (2 * b^2))'
     W0L = LLRSVD(W0, TOL)
 
-    Δt = 0.1 * min(hx, hy)
+    Δt = 0.01 * min(hx, hy)
     nt = ceil(T / Δt)
     Δt = T / nt
     Wn, ranks, ts = time_loop(W0L, Dx, Dy, X, Y, Δt, T, p, TOL)
     plot(ts, ranks; color=:black)
     plot!(; title="Solid body rank over time", legend=false, xlabel=L"t", ylabel="Rank")
+    display(current())
+
+    heatmap(todense(W0L); title="t = 0")
     display(current())
 
     heatmap(todense(Wn); title="t = $(round(ts[end], sigdigits=3))")

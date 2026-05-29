@@ -12,11 +12,20 @@ function applyL(W::LLRSVD, Dx, Dy, X, Y, TOL::Float64)::LLRSVD
     )
 end
 
-function W(k::Int, W0::LLRSVD{T}, Dx, Dy, X, Y, TOL::Float64) where T
-    if k == 0
-        return W0
+function W(k::Int, W0::Matrix{T}, Dx, Dy, X, Y)::Vector{Matrix{T}} where T
+    Ws = [W0]::Vector{Matrix{T}}
+    for p in 1:k
+        push!(Ws, applyL(Ws[end], Dx, Dy, X, Y))
     end
-    return applyL(W(k - 1, W0, Dx, Dy, X, Y, TOL), Dx, Dy, X, Y, TOL)
+    return Ws
+end
+
+function W(p::Int, W0::LLRSVD{T}, Dx, Dy, X, Y, TOL::Float64)::Vector{LLRSVD{T}} where T
+    Ws = [W0]::Vector{LLRSVD{T}}
+    for k in 1:p
+        push!(Ws, applyL(Ws[end], Dx, Dy, X, Y, TOL))
+    end
+    return Ws
 end
 
 function taylor_step(
@@ -27,26 +36,32 @@ function taylor_step(
     Y,
     Δt::Float64,
     p::Int,
-    TOL::Float64;
-    truncate_before_scaling::Bool=true,
+    TOL::Float64
 )::Vector{LLRSVD{T}} where T
-    Ws = [Wold]::Vector{LLRSVD{T}}
-    # @info "0: $(Ts[end].r)"
+    Ws = W(p, Wold, Dx, Dy, X, Y, 0.0)
 
     for k in 1:p
-        Wk_TOL = truncate_before_scaling ? TOL * Δt^(-k) : 0.0
-        # Wk = applyL(Ws[k], Dx, Dy, Wk_TOL)
-        push!(Ws, W(k, Wold, Dx, Dy, X, Y, Wk_TOL))
+        Ws[k+1].S = (Δt)^k / factorial(k) * Ws[k+1].S
+        Ws[k+1] = truncate(Ws[k+1], (Δt)^(-k) * TOL)
     end
+    return Ws
+end
 
+function taylor_step(
+    Wold::Matrix{T},
+    Dx,
+    Dy,
+    X,
+    Y,
+    Δt::Float64,
+    p::Int,
+)::Matrix{T} where T
+    Ws = W(p, Wold, Dx, Dy, X, Y)
 
-    Ts = [Wold]::Vector{LLRSVD{T}}
     for k in 1:p
-        push!(Ts, truncate(LLRSVD(Ws[k+1].U, (Δt)^k / factorial(k) * Ws[k+1].S, Ws[k+1].V), TOL))
-        # @info "$k: $(Ts[end].S)"
-        # @info trunc_sum(Ts, TOL * Δt^(-k)).S
+        Wold += (Δt)^k / factorial(k) * Ws[k+1]
     end
-    return Ts
+    return Wold
 end
 
 function time_loop(W0::LLRSVD, Dx, Dy, X, Y, Δt::Float64, T::Float64, p::Int, TOL::Float64)
@@ -64,4 +79,19 @@ function time_loop(W0::LLRSVD, Dx, Dy, X, Y, Δt::Float64, T::Float64, p::Int, T
         push!(ranks, Wn.r)
     end
     return Wn, ranks, ts
+end
+
+function time_loop(W0::Matrix, Dx, Dy, X, Y, Δt::Float64, T::Float64, p::Int)
+    Wn = W0
+    t = 0.0
+    ts = [t]
+    while t < T
+        Wnew = taylor_step(Wn, Dx, Dy, X, Y, Δt, p)
+        t += Δt
+        Wn = Wnew
+        push!(ts, t)
+
+        # return Wn, ranks, ts
+    end
+    return Wn, ts
 end
