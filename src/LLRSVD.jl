@@ -37,6 +37,7 @@ end
 
 function truncate(A::LLRSVD{T}, TOL::Float64)::LLRSVD{T} where T
     ranks_to_keep = A.r - sum(cumsum(reverse(A.S .^ 2)) .≤ TOL^2)
+    ranks_to_keep = max(ranks_to_keep, 1)
     return LLRSVD(A.U[:, 1:ranks_to_keep], A.S[1:ranks_to_keep], A.V[:, 1:ranks_to_keep])
 end
 
