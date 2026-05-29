@@ -1,13 +1,13 @@
 
 
 function applyL(W::Matrix{Float64}, Dx, Dy, X, Y)::Matrix{Float64}
-    return Dx * W * Y + X * W * Dy'
+    return Dx * W * Y - X * W * Dy'
 end
 
 function applyL(W::LLRSVD, Dx, Dy, X, Y, TOL::Float64)::LLRSVD
     return trunc_sum(
         LLRSVD(Dx * W.U, W.S, Y * W.V),
-        LLRSVD(X * W.U, W.S, Dy * W.V),
+        LLRSVD(-X * W.U, W.S, Dy * W.V),
         TOL,
     )
 end
