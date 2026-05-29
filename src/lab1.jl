@@ -279,8 +279,9 @@ function exercise7()
     Δt = T / nt
     Wn, ranks, ts = time_loop(W0L, Dx, Dy, X, Y, Δt, T, p, TOL)
     plot(ts, ranks; color=:black)
+    plot!(; title="Solid body rank over time", legend=false, xlabel=L"t", ylabel="Rank")
     display(current())
 
-    heatmap(todense(Wn))
+    heatmap(todense(Wn); title="t = $(round(ts[end], sigdigits=3))")
     display(current())
 end
