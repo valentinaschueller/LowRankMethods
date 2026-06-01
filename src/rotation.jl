@@ -71,7 +71,7 @@ function time_loop(W0::LLRSVD, Dx, Dy, X, Y, Δt::Float64, T::Float64, p::Int, T
     ts = [t]
     while t < T
         Ts = taylor_step(Wn, Dx, Dy, X, Y, Δt, p, TOL)
-        Wnew = trunc_sum(Ts, Δt^(p - 1))
+        Wnew = trunc_sum(Ts, Δt^(p + 1))
         @info Wnew.r
         t += Δt
         Wn = Wnew
@@ -90,8 +90,6 @@ function time_loop(W0::Matrix, Dx, Dy, X, Y, Δt::Float64, T::Float64, p::Int)
         t += Δt
         Wn = Wnew
         push!(ts, t)
-
-        # return Wn, ranks, ts
     end
     return Wn, ts
 end

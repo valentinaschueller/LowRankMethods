@@ -1,9 +1,10 @@
-export exercise1, exercise2, exercise3, exercise4, exercise5, exercise6, exercise7
+export exercise1, exercise2, exercise3, exercise4, exercise5, exercise6
+export exercise9, exercise10
 export truncated_Tsum
 export compare_L
-export exercise9
 export rotation_compare_Ls
 export full_rank_solver
+export time_a_vs_b
 
 include("transport.jl")
 include("rotation.jl")
@@ -84,7 +85,6 @@ function exercise4()
     Wref = sin.(x .+ Δt) * sin.(y' .+ Δt)
 
     W1 = applyL(W0, Dx, Dy)
-    display(current())
     @info LLRSVD(W1, 1e-10).S
 
     ks = 0:7
@@ -124,7 +124,7 @@ function exercise4()
         push!(second_σ, LLRSVD(sum(Ts[1:k+1, :, :]; dims=1)[1, :, :], 0.0).S[2])
     end
     plot(ks, second_σ; color=:black, m=:xcross, label=L"\sigma_2")
-    plot!(ks, Δt .^ (ks .- 1); color=:black, m=:xcross, ls=:dash, label=L"\Delta t^{p-1}")
+    plot!(ks, Δt .^ (1.5 .* (ks .- 1)); color=:black, m=:xcross, ls=:dash, label=L"1.5 \cdot \Delta t^{p-1}")
     plot!(; yscale=:log10, ylabel=L"\sigma_2", xlabel=L"p")
     plot!(; title=L"$σ_2(\sum_{k=0}^{p}T_k)$")
     display(current())
@@ -198,7 +198,7 @@ function truncated_Tsum()
         push!(second_σ, Ts[k+1].S[2])
     end
     plot(ks, second_σ; color=:black, m=:xcross, label=L"\sigma_2")
-    plot!(ks, Δt .^ (ks .- 1); color=:black, m=:xcross, ls=:dash, label=L"\Delta t^{p-1}")
+    plot!(ks, Δt .^ (ks .+ 1); color=:black, m=:xcross, ls=:dash, label=L"\Delta t^{p+1}")
     plot!(; yscale=:log10, ylabel=L"\sigma_2", xlabel=L"p")
     plot!(; title=L"$σ_2(\sum_{k=0}^{p}T_k)$")
     display(current())
@@ -286,6 +286,39 @@ function exercise9()
     @assert sqrt(hx * hy) * norm(diff) < 2e-2
 end
 
+function time_a_vs_b()
+    m = 2^8
+    n = 2^8
+    Lx = 2 * π
+    Ly = 2 * π
+    hx = Lx / m
+    hy = Ly / n
+    Dx = stencil_matrix(hx, m)
+    Dy = stencil_matrix(hy, n)
+    T = 2 * π
+    x = LinRange(0, Lx - hx, m)
+    y = LinRange(0, Ly - hy, n)
+    TOL = 1e-3
+    p = 5
+    W0 = sin.(x) * sin.(y')
+
+    W0L = LLRSVD(W0, TOL)
+
+    Δt = 4 * min(hx, hy)
+    nt = ceil(T / Δt)
+    Δt = T / nt
+    @info Δt
+
+    for k in range(1, 4)
+        Δt = Δt / 2
+        WnA = @time time_loop_A(W0L, Dx, Dy, Δt, T, p, TOL)
+        @info norm(hx * (todense(WnA) - W0))
+        WnB = @time time_loop_B(W0L, Dx, Dy, Δt, T, p, TOL)
+        @info norm(hx * (todense(WnB) - W0))
+    end
+    return
+end
+
 function rotation_compare_Ls()
     m = 128
     n = 128
@@ -361,9 +394,9 @@ function full_rank_solver()
     display(current())
 end
 
-function exercise7()
-    m = 64
-    n = 64
+function exercise10()
+    m = 128
+    n = 128
     Lx = 6
     Ly = 6
     hx = 2 * Lx / m

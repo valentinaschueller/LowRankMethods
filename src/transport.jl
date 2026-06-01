@@ -42,7 +42,6 @@ function taylor_step(
     truncate_before_scaling::Bool=true,
 )::Vector{LLRSVD{T}} where T
     Ws = [Wold]::Vector{LLRSVD{T}}
-    # @info "0: $(Ts[end].r)"
 
     for k in 1:p
         Wk_TOL = truncate_before_scaling ? TOL * Δt^(-k) : 0.0
@@ -54,8 +53,6 @@ function taylor_step(
     Ts = [Wold]::Vector{LLRSVD{T}}
     for k in 1:p
         push!(Ts, truncate(LLRSVD(Ws[k+1].U, (Δt)^k / factorial(k) * Ws[k+1].S, Ws[k+1].V), TOL))
-        # @info "$k: $(Ts[end].S)"
-        # @info trunc_sum(Ts, TOL * Δt^(-k)).S
     end
     return Ts
 end
@@ -65,11 +62,9 @@ function time_loop_A(W0::LLRSVD, Dx, Dy, Δt::Float64, T::Float64, p::Int, TOL::
     Wn = W0
     t = 0.0
     while t < T
-        Wnew = trunc_sum(taylor_step(Wn, Dx, Dy, Δt, p, TOL), Δt^(p - 1))
+        Wnew = trunc_sum(taylor_step(Wn, Dx, Dy, Δt, p, TOL), Δt^(p + 1))
         t += Δt
         Wn = Wnew
-        @info "t=$t, Rank: $(Wnew.r)"
-        # @assert Wnew.r == 1
     end
     return Wn
 end
