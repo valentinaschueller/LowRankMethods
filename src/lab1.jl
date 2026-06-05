@@ -9,15 +9,6 @@ export time_a_vs_b
 include("transport.jl")
 include("rotation.jl")
 
-function stencil_matrix(h, N)::Matrix{Float64}
-    return 1 / (2 * h) .* diagm(
-        1 => ones(N - 1),
-        -1 => -1 * ones(N - 1),
-        N - 1 => [-1.0],
-        1 - N => [1.0],
-    )
-end
-
 function exercise1()
     @info "Verify LLRSVD"
     R = rand(30, 20)
