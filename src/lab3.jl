@@ -145,18 +145,24 @@ function l3ex7()
     Dx = stencil_matrix(hx, m)
     T = 2 * π
     x = LinRange(0, Lx - hx, m)
-    TOL = 1e-3
+    TOL = 1e-5
     p = 4
     W0 = [x * y * z for x = sin.(x), y = sin.(x), z = sin.(x)]
 
     W0L = Tucker3(W0, TOL)
 
-    Δts = [0.2, 0.1]
+    Δt = 0.001
+    nt = Int(ceil(T / Δt))
+    Δt = T / nt
+    Wexact, _ = time_loop(W0L, Dx, Dx, Dx, Δt, nt, p, TOL)
+
+    Δts = [0.4, 0.2, 0.1, 0.05]
     for Δt in Δts
-        nt = ceil(T / Δt)
+        nt = Int(ceil(T / Δt))
         Δt = T / nt
-        Wn, _ = time_loop(W0L, Dx, Dx, Dx, Δt, T, p, TOL)
-        @info hx^(3 / 2) * norm((todense(Wn) - W0))
+        Wn, _ = time_loop(W0L, Dx, Dx, Dx, Δt, nt, p, TOL)
+        @info "A: $(hx^(3 / 2) * norm((todense(Wn) - W0)))"
+        @info "N: $(hx^(3 / 2) * norm((todense(Wn) - todense(Wexact))))"
     end
     return
 end

@@ -41,15 +41,17 @@ function time_loop(
     Dx::AbstractMatrix,
     Dy::AbstractMatrix,
     Dz::AbstractMatrix,
-    Δt::Float64, T::Float64,
+    Δt::Float64,
+    nt::Int,
     p::Int,
     TOL::Float64;
 )
     Wn = W0
     t = 0.0
     rs = []::Vector{}
-    while t < T
+    for _ in 1:nt
         Wnew = tucker_sum(taylor_step(Wn, Dx, Dy, Dz, Δt, p, TOL), Δt^(p + 1))
+        # display(plot(contour(todense(Wnew)[1, :, :]; fill=true)))
         push!(rs, size(Wnew.G))
         t += Δt
         Wn = Wnew

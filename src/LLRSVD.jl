@@ -23,7 +23,10 @@ end
 function LLRSVD(W::Matrix{T}, TOL::Float64) where T
     U, S, V = svd(W)
     subset = findall(x -> x > TOL, S)
-    @assert !isempty(subset)
+    if isempty(subset)
+        return LLRSVD(U[:, [1]], [0.0], V[:, [1]])
+    end
+    # @assert !isempty(subset)
     return LLRSVD(U[:, subset], S[subset], V[:, subset])
 end
 
