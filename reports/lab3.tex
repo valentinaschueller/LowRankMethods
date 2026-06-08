@@ -136,6 +136,61 @@ right corner in the back.
 The factor matrices are given by
 \[W_1 = [U_1 \, V_1],\; W_2 = [U_2 \, V_2], \; W_3 = [U_3 \, V_3].\]
 
+To show the statement, we work indexwise.
+Note the following:
+\begin{align}
+  a_{\alpha \beta \gamma} &= \sum_{k=1}^{s_1} \sum_{j=1}^{r_1}
+  \sum_{i=1}^{q_1} g_{ijk} (u_1)_{\alpha i} (u_2)_{\beta j}
+  (u_3)_{\gamma k}, \\
+  b_{\alpha \beta \gamma} &= \sum_{k=1}^{s_2} \sum_{j=1}^{r_2}
+  \sum_{i=1}^{q_2} h_{ijk} (v_1)_{\alpha i} (v_2)_{\beta j}
+  (v_3)_{\gamma k}, \\
+  c_{\alpha \beta \gamma} &= \sum_{k=1}^{s_1+s_2} \sum_{j=1}^{r_1+r_2}
+  \sum_{i=1}^{q_1+q_2} j_{ijk} (w_1)_{\alpha i} (w_2)_{\beta j}
+  (w_3)_{\gamma k}, \label{eq:c}\\
+  j_{ijk} &=
+  \begin{cases}
+    g_{ijk} & \text{for } (i,j,k) \in \{1,\dots,q_1\}\times
+    \{1,\dots,r_1\} \times \{1,\dots,s_1\}, \\
+    h_{ijk} & \text{for } (i,j,k) \in \{q_1+1,\dots,q_1+q_2\}\times
+    \{r_1+1,\dots,r_1+r_2\} \times \{s_1+1,\dots,s_1+s_2\}, \\
+    0 & \text{otherwise.}
+  \end{cases} \label{eq:j}\\
+  (w_1)_{\alpha i} &=
+  \begin{cases}
+    (u_1)_{\alpha i} & \text{for } i \in \{1,\dots,q_1\}, \\
+    (v_1)_{\alpha i} & \text{for } i \in \{q_1+1,\dots,q_1+q_2\},
+  \end{cases} \label{eq:w1}
+\end{align}
+where \eqref{eq:w1} holds similarly for \((w_2)_{\beta j}\), \((w_3)_\gamma k\).
+The first step is to expand \eqref{eq:c} by splitting the sums into
+contributions from \(\mathcal{U}_l\) and \(\mathcal{V}_l\) using the
+definitions for \(\mathcal{W}_l\), \(l\in\{1,2,3\}\).
+This results in eight separate terms, for example
+\begin{equation}
+  \sum_{i=1}^{q_1} \sum_{j=1}^{r_2} \sum_{k=1}^{q_1} j_{i(j+r_1)k}
+  (u_1)_{\alpha i} (v_2)_{\beta j} (u_3)_{\gamma k}.
+\end{equation}
+Using our definition of \(\mathcal{J}\), cf.~\eqref{eq:j}, we observe
+that such `mixed' \(\mathcal{U}\)-\(\mathcal{V}\) terms vanish, since
+the corresponding indices of \(\mathcal{J}\) are zero.
+That is, the only remaining contributions are
+\begin{equation}
+  \begin{split}
+    c_{\alpha \beta \gamma} &= \sum_{k=1}^{s_1} \sum_{j=1}^{r_1}
+    \sum_{i=1}^{q_1} j_{ijk} (u_1)_{\alpha i} (u_2)_{\beta j}
+    (u_3)_{\gamma k} + \sum_{k=1}^{s_2} \sum_{j=1}^{r_2}
+    \sum_{i=1}^{q_2} j_{(i+q_1)(j+r_1)(k+s_1)} (v_1)_{\alpha i} (v_2)_{\beta j}
+    (v_3)_{\gamma k} \\
+    &= \sum_{k=1}^{s_1} \sum_{j=1}^{r_1}
+    \sum_{i=1}^{q_1} g_{ijk} (u_1)_{\alpha i} (u_2)_{\beta j}
+    (u_3)_{\gamma k} + \sum_{k=1}^{s_2} \sum_{j=1}^{r_2}
+    \sum_{i=1}^{q_2} h_{ijk} (v_1)_{\alpha i} (v_2)_{\beta j}
+    (v_3)_{\gamma k},
+  \end{split}
+\end{equation}
+which is what we intended to show.
+
 For the implementation, it was crucial that I implement rounding as
 described in~\cite{smith.etal_2026}.
 As an example, consider adding a rank-1 tensor onto itself,
@@ -152,20 +207,6 @@ Afterwards, I apply the procedure outlined in the lab
 description to truncate the rank of \(\mathcal{C}\) (Phase 2).
 \verb|l3ex6()| checks that this successfully recovers a rank-1 tensor
 from adding two (and three) rank-1 tensors.
-
-\begin{table}[h]
-  \centering
-  \begin{tabular}{l|l|l|l|l}
-    \(\Delta t\)        & Time (A) & Time (B) & Error (A) & Error (B) \\
-    \hline
-    \(\Delta t^*\approx0.01\) & 0.14     & 0.62   & 0.22     & 0.22     \\
-    \(\Delta t^* / 2\)  & 0.39     & 1.1    & 0.11     & 0.11     \\
-    \(\Delta t^* / 4\)  & 0.45     & 2.5    & \num{3.5e-4}   & \num{1.4e-3}   \\
-    \(\Delta t^* / 8\)  & 0.89     & 4.9    & \num{2.5e-2}   & \num{2.5e-2}
-  \end{tabular}
-  \caption{Error and time comparison of strategies A and
-  B.\label{tab:strategies}}
-\end{table}
 
 \printbibliography{}
 
