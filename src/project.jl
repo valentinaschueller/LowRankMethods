@@ -96,7 +96,7 @@ function solve_sylvester(nx, nt; g=nothing)
     L = 1
     T = 1
     if isnothing(g)
-        g = x -> gaussian(x; μ=0.5, σ=0.1)
+        g = x -> gaussian(x; μ=0.5, σ=0.01)
     end
     A = space_matrix(nx, L / nx)
     B = time_matrix(nt, T / nt)
