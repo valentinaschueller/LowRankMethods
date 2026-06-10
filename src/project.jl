@@ -9,6 +9,8 @@ export eigenvalue_plot, show_low_rank
 export crossDEIM
 export solve_sylvester
 export check_single_rank
+export approximate
+export eigensolver
 
 function ψ(t, x; α=0.0)
     return 1 / (2 * sqrt(π * t)) * exp(-(x - α)^2 / (4 * t))
@@ -135,5 +137,32 @@ function check_single_rank()
     return nothing
 end
 
+function eigensolver(nx, nt; g=nothing)
+    L = 1
+    T = 1
+    if isnothing(g)
+        g = x -> gaussian(x; μ=0.5, σ=0.01)
+    end
 
+    A = space_matrix(nx, L / nx)
+    ΛA, Z = eigen(A)
+    @assert Z * Z' ≈ 1.0I
+    @assert Z * diagm(ΛA) * Z' ≈ A
 
+    B = time_matrix(nt, T / nt)
+    ΛB, R = eigen(B)
+
+    C = initial_condition(g, nx, nt, L, T)
+    C_hat = R \ (C * Z)
+
+    W_hat = [C_hat[i, j] / (ΛB[i] - ΛA[j]) for i = 1:nt, j = 1:nx]
+    W = R * W_hat * Z'
+    @assert real.(W) ≈ W
+
+    W = real.(W)
+    LU = LowRankMethods.LLRSVD(W, 0.0)
+    plot(LU.S; yscale=:log10, m=:dot, color=:black)
+    display(current())
+    @info (length(LowRankMethods.LLRSVD(W, 1e-13).S))
+    return W
+end
