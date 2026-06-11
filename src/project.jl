@@ -10,7 +10,7 @@ export crossDEIM
 export solve_sylvester
 export check_single_rank
 export approximate
-export eigensolver
+export eigensolver, eigensolver_lr
 
 function ψ(t, x; α=0.0)
     return 1 / (2 * sqrt(π * t)) * exp(-(x - α)^2 / (4 * t))
@@ -73,12 +73,24 @@ function initial_condition(g, nx, nt, L, T)
     Δt = T / nt
     @assert abs(g(0)) < 1e-14
     @assert abs(g(L)) < 1e-14
-    x = LinRange(L / nx, L - L / nx, nx)
+    x = LinRange(L / (nx + 1), L - L / (nx + 1), nx)
     gx = g.(x)
     e1 = zeros(nt)
     e1[1] = 1.0
     # @info maximum(gx)
     return 1 / (2 * Δt) * (e1 * gx')
+end
+
+function rhs_vectors(g, nx, nt, L, T)
+    Δt = T / nt
+    @assert abs(g(0)) < 1e-14
+    @assert abs(g(L)) < 1e-14
+    x = LinRange(L / (nx + 1), L - L / (nx + 1), nx)
+    gx = g.(x)
+    e1 = zeros(nt)
+    e1[1] = 1.0
+    # @info maximum(gx)
+    return 1 / (2 * Δt) * e1, gx
 end
 
 function eigenvalue_plot(nt, nx)
@@ -100,7 +112,7 @@ function solve_sylvester(nx, nt; g=nothing)
     if isnothing(g)
         g = x -> gaussian(x; μ=0.5, σ=0.01)
     end
-    A = space_matrix(nx, L / nx)
+    A = space_matrix(nx, L / (nx + 1))
     B = time_matrix(nt, T / nt)
     C = initial_condition(g, nx, nt, L, T)
     W = sylvester(B, -A', -C)
@@ -144,7 +156,7 @@ function eigensolver(nx, nt; g=nothing)
         g = x -> gaussian(x; μ=0.5, σ=0.01)
     end
 
-    A = space_matrix(nx, L / nx)
+    A = space_matrix(nx, L / (nx + 1))
     ΛA, Z = eigen(A)
     @assert Z * Z' ≈ 1.0I
     @assert Z * diagm(ΛA) * Z' ≈ A
@@ -166,3 +178,40 @@ function eigensolver(nx, nt; g=nothing)
     @info (length(LowRankMethods.LLRSVD(W, 1e-13).S))
     return W
 end
+
+function eigensolver_lr(nx, nt; g=nothing)
+    L = 1
+    T = 1
+    if isnothing(g)
+        g = x -> gaussian(x; μ=0.5, σ=0.01)
+    end
+
+    A = space_matrix(nx, L / (nx + 1))
+    ΛA, Z = eigen(A)
+    @assert Z * Z' ≈ 1.0I
+    @assert Z * diagm(ΛA) * Z' ≈ A
+
+    B = time_matrix(nt, T / nt)
+    ΛB, R = eigen(B)
+
+    C, D = rhs_vectors(g, nx, nt, L, T)
+    C = reshape(C, (:, 1))
+    D = reshape(D, (:, 1))
+    C_hat = R \ C
+    D_hat = (D' * Z)'
+
+    Wparam = (i, j) -> (C_hat[i] * D_hat[j]) / (ΛB[i] - ΛA[j])
+    opts = (tol=1e-20, r_max=15, r_in=15, max_iter=30)
+    U, S, V, info = crossDEIM(Wparam, C_hat, [1.0], D_hat, opts)
+    @info info
+    W_lowrank = R * U * diagm(S) * (Z * V)'
+    @assert real.(W_lowrank) ≈ W_lowrank
+    W_lowrank = real.(W_lowrank)
+
+    LU_lowrank = LowRankMethods.LLRSVD(W_lowrank, 0.0)
+    plot(LU_lowrank.S; yscale=:log10, m=:dot, color=:black)
+    display(current())
+    @info (length(LowRankMethods.LLRSVD(W_lowrank, 1e-13).S))
+    return W_lowrank
+end
+
