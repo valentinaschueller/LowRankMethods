@@ -2,6 +2,7 @@ using Plots
 using LinearAlgebra
 using LowRankMethods
 using LLR
+using Pseudospectra
 
 export time_matrix, space_matrix
 export initial_condition, spike
@@ -11,6 +12,7 @@ export solve_sylvester
 export check_single_rank
 export approximate
 export eigensolver, eigensolver_lr
+export plot_pseudospectra
 
 function ψ(t, x; α=0.0)
     return 1 / (2 * sqrt(π * t)) * exp(-(x - α)^2 / (4 * t))
@@ -215,3 +217,10 @@ function eigensolver_lr(nx, nt; g=nothing)
     return W_lowrank
 end
 
+function plot_pseudospectra()
+    B = time_matrix(10, 0.1)
+    Blarge = time_matrix(100, 0.01)
+    p1 = spectralportrait(B; label="nt=10")
+    p2 = spectralportrait(Blarge; label="nt=100")
+    display(plot(p1, p2; size=(1000, 400)))
+end
