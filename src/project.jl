@@ -3,6 +3,7 @@ using LinearAlgebra
 using LowRankMethods
 using LLR
 using Pseudospectra
+using LaTeXStrings
 
 export time_matrix, space_matrix
 export initial_condition, spike
@@ -12,7 +13,7 @@ export solve_sylvester
 export check_single_rank
 export approximate
 export eigensolver, eigensolver_lr
-export plot_pseudospectra
+export plot_pseudospectra, plot_spectrum
 
 function ψ(t, x; α=0.0)
     return 1 / (2 * sqrt(π * t)) * exp(-(x - α)^2 / (4 * t))
@@ -23,18 +24,19 @@ function multi_green(t, x)
 end
 
 function show_low_rank()
-    x = LinRange(-1, 1, 100)
+    x = LinRange(-1, 1, 200)
     t = LinRange(1e-3, 5, 500)
 
     u = [ψ(τ, χ) for τ = t, χ = x]
-    u = [multi_green(τ, χ) for τ = t, χ = x]
+    # u = [multi_green(τ, χ) for τ = t, χ = x]
 
     LU = LLRSVD(u, 0.0)
 
-    p1 = surface(t, x, (t, x) -> multi_green(t, x))
-    p2 = plot(LU.S; yscale=:log10, m=:dot, color=:black)
+    p1 = surface(t, x, (t, x) -> ψ(t, x); title=L"ψ(t,x)", xlabel=L"t", ylabel=L"x")
+    p2 = plot(LU.S; yscale=:log10, m=:dot, color=:black, legend=false, title="Singular values")
     display(plot(p1, p2; size=(1000, 400)))
-    @info (length(LLRSVD(u, 1e-13).S))
+    @info (length(LLRSVD(u, 1e-14).S))
+    savefig("green_low_rank.png")
 end
 
 function time_matrix(nt, Δt)::Matrix{Float64}
@@ -121,7 +123,7 @@ function solve_sylvester(nx, nt; g=nothing)
     LU = LowRankMethods.LLRSVD(W, 0.0)
     plot(LU.S; yscale=:log10, m=:dot, color=:black)
     display(current())
-    @info (length(LowRankMethods.LLRSVD(W, 1e-13).S))
+    @info (length(LowRankMethods.LLRSVD(W, 1e-10).S))
     return W
 end
 
@@ -217,10 +219,17 @@ function eigensolver_lr(nx, nt; g=nothing)
     return W_lowrank
 end
 
+function plot_spectrum()
+    A = space_matrix(10, 0.1)
+    λA = Vector{ComplexF64}(eigvals(A))
+    scatter(λA; color=:black, legend=false, ylim=[-1, 1])
+    display(current())
+    savefig("lambdaA.png")
+end
+
 function plot_pseudospectra()
     B = time_matrix(10, 0.1)
-    Blarge = time_matrix(100, 0.01)
-    p1 = spectralportrait(B; label="nt=10")
-    p2 = spectralportrait(Blarge; label="nt=100")
-    display(plot(p1, p2; size=(1000, 400)))
+    spectralportrait(B)
+    display(current())
+    savefig("lambdaB.png")
 end
