@@ -18,6 +18,5 @@ include("tensors.jl")
 include("lab1.jl")
 include("lab2.jl")
 include("lab3.jl")
-include("project.jl")
 
 end # module LowRankMethods
